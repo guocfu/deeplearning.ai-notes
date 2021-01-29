@@ -59,9 +59,13 @@ z=\omega^T x +b\\
 $$
 为了计算方便，我们逐步求偏导：
 $$
-\frac{\partial L}{\partial a}=\frac{\partial}{\partial a}(-yloga-(1-y)log(1-a))= -\frac{y}{a}+\frac{1-y}{1-a}\\
-\frac{\partial a}{\partial z}=\frac{\partial }{\partial z}(\frac{1}{1+e^{-z}})=\frac{1}{1+e^{-z}}(1-\frac{1}{1+e^{-z}})=a(1-a) \\
-\frac{\partial z}{\partial \omega}=x \\
+\begin{aligned}
+\frac{\partial L}{\partial a} &= \frac{\partial}{\partial a}(-yloga-(1-y)log(1-a)) \\ 
+&= -\frac{y}{a}+\frac{1-y}{1-a} \\
+\frac{\partial a}{\partial z} &= \frac{\partial }{\partial z}(\frac{1}{1+e^{-z}}) \\ 
+&=\frac{1}{1+e^{-z}}(1-\frac{1}{1+e^{-z}}) \\ &=a(1-a) \\
+\frac{\partial z}{\partial \omega} &=x \\
+\end{aligned}
 $$
 根据链式法则，可求得损失函数$L$对$\omega$的偏导
 $$
@@ -90,3 +94,186 @@ $$
 \omega := w-\alpha \frac{\partial J}{\partial \omega} \\
 b := b-\alpha \frac{\partial J}{\partial b}
 $$
+
+## 代码解析
+
+```python
+# encoding: utf-8
+
+import numpy as np
+import h5py
+import matplotlib.pyplot as plt
+
+def sigmoid(z):
+    return 1 / (1 + np.exp(-z))
+
+
+def initialize_with_zeros(dim):
+    """
+    初始化权重w和偏置b为0
+    :param dim: 向量w的维度(dim, 1)
+    :return: w, b
+    """
+    w = np.zeros((dim, 1))
+    b = 0
+
+    return w, b
+
+
+def propagate(w, b, X, Y):
+    """
+    计算损失函数及其梯度
+    :param w: 权重 （num_px*num_px*3, 1)
+    :param b: 偏置，常量
+    :param X: 训练集 （num_px*num_px*3, numbers of examples)
+    :param Y: 标签 （1, numbers of examples)
+    :return: cost -- 代价函数（交叉熵）
+             grads -- 代价函数对w和b的梯度，分别用dw，db表示  (dict)
+    """
+    m = X.shape[1]  # 训练集样本数
+    A = sigmoid(np.dot(w.T, X) + b)  # 激活值
+    cost = -1/m * np.sum(Y * np.log(A) + (1-Y) * np.log(1-A))
+    cost = np.squeeze(cost)  # 删除维度
+    # 反向传播计算梯度
+    dw = 1/m * np.dot(X, (A - Y).T)
+    db = 1/m * np.sum(A - Y)
+    grads = {"dw": dw,
+            "db": db}
+
+    return cost, grads
+
+
+def optimize(w, b, X, Y, num_iterations, learning_rate, print_cost=False):
+    """
+    梯度下降法最优化w和b
+    :param w: 权重 （num_px*num_px*3, 1)
+    :param b: 偏置，常量
+    :param X: 训练集 （num_px*num_px*3, numbers of examples)
+    :param Y: 标签 （1, numbers of examples)
+    :param num_iterations: 迭代次数
+    :param learning_rate: 学习率
+    :param print_cost: 每100次打印cost
+    :return: params -- 存储最优化后权重w和b的字典
+             grads -- 存储w和b梯度的字典
+             costs -- 存储每百次迭代cost的列表
+    """
+
+    costs = []
+    for i in range(num_iterations):
+
+        cost, grads = propagate(w, b, X, Y)
+        dw = grads["dw"]
+        db = grads["db"]
+        w = w - learning_rate * dw
+        b = b - learning_rate * db
+
+        if i % 100 == 0:
+            costs.append(cost)
+
+        if print_cost and i % 100 == 0:
+            print(f"Cost after iteration {i}: {cost:f}")
+
+    params = {"w": w,
+              "b": b}
+    grads = {"dw": dw,
+             "db": db}
+
+    return params, grads, costs
+
+
+def predict(w, b, X):
+    """
+    使用逻辑回归预测标签(0/1)
+    :param w: 权重 （num_px*num_px*3, 1)
+    :param b: 偏置，常量
+    :param X: 训练集 （num_px*num_px*3, numbers of examples)
+    :return : Y_prediction -- 样本X的预测值
+    """
+    m = X.shape[1]  # numbers of examples
+    w = w.reshape(X.shape[0], 1)
+    Y_prediction = np.zeros((1, m))
+
+    A = sigmoid(np.dot(w.T, X)+b)  # (1, numbers of examples)
+    for i in range(A.shape[1]):
+        if A[0, 1] >= 0.5:
+            Y_prediction[0, i] = 1
+        else:
+            Y_prediction[0, i] = 0
+
+    return Y_prediction
+
+
+def model(X_train, Y_train, X_test, Y_test, num_iterations=2000, learning_rate=0.5, print_cost=False):
+    """
+    :param X_train: 训练集
+    :param Y_train: 训练集标签
+    :param X_test: 测试集
+    :param Y_test: 测试集标签
+    :param num_iterations: 迭代次数
+    :param learning_rate: 学习率
+    :param print_cost: 打印cost
+    :return: d -- 包含模型信息的字典
+    """
+    # 初始化参数
+    w, b = initialize_with_zeros(X_train.shape[0])
+    # 梯度下降法
+    params, grads, costs = optimize(w, b, X_train, Y_train, num_iterations, learning_rate, print_cost)
+    w = params["w"]
+    b = params["b"]
+
+    train_pred = predict(w, b, X_train)
+    test_pred = predict(w, b, X_test)
+
+    print("train accuracy: {} %".format(100 - np.mean(np.abs(train_pred - Y_train)) * 100))
+    print("test accuracy: {} %".format(100 - np.mean(np.abs(test_pred - Y_test)) * 100))
+    d = {"costs": costs,
+         "train_pred": train_pred,
+         "test_pred": test_pred,
+         "w": w,
+         "b": b,
+         "learning_rate": learning_rate,
+         "num_iterations": num_iterations}
+
+    return d
+
+
+def load_dataset():
+    train_dataset = h5py.File('datasets/train_catvnoncat.h5', "r")
+    train_set_x_orig = np.array(train_dataset["train_set_x"][:])  # your train set features
+    train_set_y_orig = np.array(train_dataset["train_set_y"][:])  # your train set labels
+
+    test_dataset = h5py.File('datasets/test_catvnoncat.h5', "r")
+    test_set_x_orig = np.array(test_dataset["test_set_x"][:])  # your test set features
+    test_set_y_orig = np.array(test_dataset["test_set_y"][:])  # your test set labels
+
+    classes = np.array(test_dataset["list_classes"][:])  # the list of classes
+
+    train_set_y_orig = train_set_y_orig.reshape((1, train_set_y_orig.shape[0]))
+    test_set_y_orig = test_set_y_orig.reshape((1, test_set_y_orig.shape[0]))
+
+    train_set_x_flatten = train_set_x_orig.reshape(train_set_x_orig.shape[0], -1).T
+    test_set_x_flatten = test_set_x_orig.reshape(test_set_x_orig.shape[0], -1).T
+    train_set_x = train_set_x_flatten / 255.
+    test_set_x = test_set_x_flatten / 255.
+    return train_set_x, train_set_y_orig, test_set_x, test_set_y_orig, classes
+
+
+if __name__ == "__main__":
+    train_set_x, train_set_y, test_set_x, test_set_y, classes = load_dataset()
+    d = model(train_set_x, train_set_y, test_set_x, test_set_y, num_iterations=2000, learning_rate=0.005, print_cost=True)
+    # 示例
+    plt.figure(0)
+    index = 5
+    num_px = 64
+    plt.imshow(test_set_x[:, index].reshape((num_px, num_px, 3)))
+    print("y="+str(test_set_y[0, index]) + ", you predicted that it is a \"" + classes[int(d["test_pred"][0, index])].decode("utf-8") +  "\" picture.")
+    # 绘制学习曲线
+    plt.figure(1)
+    costs = np.squeeze(d["costs"])
+    plt.plot(costs)
+    plt.ylabel('cost')
+    plt.xlabel("iterations (per hundreds)")
+    plt.title("Learning rate: " + str(d["learning_rate"]))
+    plt.show()
+
+```
