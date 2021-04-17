@@ -83,7 +83,7 @@ $$
 $$
 \frac{\partial J}{\partial \omega}=\frac{1}{m}\sum_{i=i}^{m}(\hat{y}^{(i)}-y^{(i)})x^{(i)} \\
 $$
-我们用$\hat{Y}$和$Y$分别表示所有训练样本的预测值和真实值(m\*1)，$X$表示所有训练样本的特征值(m\*n)，则代价函数对$\omega$的梯度最终可表示为：
+我们用$\hat{Y}$和$Y$分别表示所有训练样本的预测值和真实值(m,1)，$X$表示所有训练样本的特征值(m,n)，则代价函数对$\omega$的梯度最终可表示为：
 $$
 \frac{\partial J}{\partial \omega}=\frac{1}{m}(\hat Y-Y)·X
 $$
