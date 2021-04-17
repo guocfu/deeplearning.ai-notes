@@ -58,6 +58,7 @@ z=\omega^T x +b\\
 \hat{y}=a=\sigma(z) \\
 $$
 为了计算方便，我们逐步求偏导：
+<div>
 $$
 \begin{aligned}
 \frac{\partial L}{\partial a} &= \frac{\partial}{\partial a}(-yloga-(1-y)log(1-a)) \\ 
@@ -67,6 +68,7 @@ $$
 \frac{\partial z}{\partial \omega} &=x \\
 \end{aligned}
 $$
+</div>
 根据链式法则，可求得损失函数$L$对$\omega$的偏导
 $$
 \begin{aligned}
